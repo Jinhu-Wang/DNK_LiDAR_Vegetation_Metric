@@ -11,8 +11,6 @@
 - [File Structure](#file-structure)
 - [Requirements](#requirements)
 - [Usage Instructions](#usage-instructions)
-- [Configuration Reference](#configuration-reference)
-- [Related Repositories](#related-repositories)
 - [License](#license)
 - [Contact](#contact)
 
@@ -23,15 +21,6 @@
 **DNK_LiDAR_Vegetation_Metric** is a set of parallel Python scripts that derive vegetation
 structure metrics from Airborne Laser Scanning (ALS) point clouds over Denmark, and validate
 them against field-surveyed ground truth.
-
-The core question the repository is built around is a **resolution sensitivity analysis**: how
-much does the choice of (a) the DTM resolution used for height normalization and (b) the raster
-resolution used for the vegetation metric affect the estimated vegetation area? The pipeline
-therefore sweeps both resolutions independently over a 10 x 10 grid (0.1 m to 1.0 m) and reports
-the deviation from ground truth for every combination as a heatmap.
-
-All three stages are batch-parallel (`ProcessPoolExecutor`) and are meant to be run in order on
-a folder of tiled/clipped `.laz` plots.
 
 ---
 
@@ -184,35 +173,6 @@ files — expect memory use to scale with the number of workers times plot size.
 > configurations. On a large plot collection this is hours of compute and produces a very large
 > number of GeoTIFFs. Start with a short `resolutions` list (e.g. `[0.25, 0.5, 1.0]`) and a
 > handful of plots to verify the setup before launching the full run.
-
----
-
-## Configuration Reference
-
-| Parameter | Script | Default | Description |
-|---|---|---|---|
-| `input_folder` | 1 | `1_ClippedPCD` | Folder of input `.laz` plots |
-| `base_dtm_folder` | 1 | `2_DTM_Parallel_idw` | DTM GeoTIFF output root |
-| `base_output_folder` | 1 | `3_Normalized_Parallel_idw` | Normalized `.laz` output root |
-| `interpolation_method` | 1 | `idw` | `idw`, `linear`, `rbf` or `knn` |
-| `resolutions` | 1, 2, 3 | `0.1 … 1.0` | Resolution sweep, in metres |
-| `target_crs` | 1, 2 | `EPSG:25832` | CRS written to the output rasters |
-| `cpu_usage_percent` | 1, 2 | `0.9` | Fraction of cores used by the worker pool |
-| `metrics_to_compute` | 2, 3 | `mean, median, max, p95` | Per-pixel height statistics |
-| `class_configs` / `class_labels` | 2, 3 | `class_4, class_5, class_4_5` | ASPRS vegetation classes |
-| `gt_txt_path` | 3 | `woody_plants_output_v2.txt` | Ground truth table |
-| `output_dir` | 3 | `5_Ground_Truth_Comparison` | Comparison output root |
-
-The 5 m sampling radius and the 1 m height threshold used in stage 3 are set in
-`process_file_batch` (`radius_m`, and the `< 1.0` comparison).
-
----
-
-## Related Repositories
-
-* [LiDAR_Vegetation_Metrics](https://github.com/Jinhu-Wang/LiDAR_Vegetation_Metrics) —
-  lightweight Jupyter Notebooks (local and Google Colab) for computing vegetation metrics from
-  ALS point clouds.
 
 ---
 
