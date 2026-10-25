@@ -46,56 +46,6 @@ except ImportError:
             self.close()
 
 
-# ==========================================================================
-# v_01 CHANGES (from v5_7) -- rewritten for the centre-symmetric pipeline
-# ==========================================================================
-# (1) CIRCLE CENTRE = GEOMETRIC CENTRE OF THE METRIC RASTER.
-#     v5_5..v5_7 centred the 5 m disk on the surveyed coordinate from
-#     0_Shapefiles_2018/filtered_plots_2018.csv. Since
-#     1_dtm_gen_normalization_parallel_v_02.py /
-#     2_compute_4_vegetation_metrics_v_01.py build every grid symmetric about
-#     the plot's own bounding-box centre, that centre is now read straight off
-#     the GeoTIFF:
-#         cx = left + width  * veg_res / 2      (== (bounds.left + bounds.right) / 2)
-#         cy = top  - height * veg_res / 2
-#     Measured on the real tree, this centre is IDENTICAL for all 19 norm_res
-#     and all 19 veg_res of a plot (it is the point bbox centre, which does not
-#     depend on either resolution), so one plot has exactly one disk.
-#     The surveyed coordinate is still read, but only as a DIAGNOSTIC:
-#     plot_circle_coverage.csv reports |raster centre - surveyed centre| per plot
-#     (measured over 300 tiles previously: median 5 mm, max 1.605 m). It does
-#     not influence any area.
-#
-# (2) AREAS COME FROM THE METRIC RASTERS, CLIPPED BY THE 5 m DISK.
-#     v5_7 abandoned 4_Vegetation_Metrics/ and recomputed metrics in-process
-#     from the normalized clouds, clipping the POINTS to the disk first
-#     (clip_points=True). This version reads
-#     4_Vegetation_Metrics_v_01/<class>/res_<norm>/<metric>/res_<veg>/<plot>_<metric>.tif
-#     as written by step 2 and clips the AREA only: every pixel whose value is
-#     >= 1.0 m contributes the EXACT area of its intersection with the disk
-#     (disk_rect_area(), unchanged from v5_5/v5_7). A pixel's VALUE therefore
-#     still comes from all points in that pixel, including points outside the
-#     disk -- i.e. the published rasters are compared as they stand.
-#     This reproduces v5_6 / v5_7's `clip_points=False` branch, NOT v5_7's
-#     default, so the matrices are not numerically comparable to
-#     5_Ground_Truth_Comparison_v1_5.
-#
-# (3) FULL 19 x 19 SWEEP: resolutions = 0.1..1.0 step 0.1, then 2..10 step 1,
-#     on both axes (v5_7 ran 14 x 14 and silently skipped 3, 4, 6, 8, 9 m).
-#     That is 19 norm_res x 19 veg_res x 4 metrics x 2,626 plots = 3,791,944
-#     rasters read, so the run is checkpointed: results are flushed to
-#     <output_dir>/_cache/areas.npz every `checkpoint_seconds`, and a restart
-#     recomputes only the (plot, veg_res) cells not already done.
-#
-# ELIGIBILITY: a plot is used only if its raster extent covers at least
-#     MIN_CIRCLE_COVERAGE of the disk, measured at the FINEST veg_res (the
-#     least padded, hence tightest, grid). Same plot set in every cell.
-#
-# UNCHANGED from v5_7: the GT column (`over` = woody cover above 1 m, m2,
-#     in the 5 m circle), HEIGHT_THRESHOLD_M, disk_rect_area(), the five
-#     per-cell statistics, the CSV / heatmap names and folder layout, the
-#     inverted heatmap y-axis, and replot-only mode.
-# ==========================================================================
 
 RADIUS_M = 5.0
 DISK_AREA_M2 = np.pi * RADIUS_M ** 2
@@ -791,8 +741,8 @@ if __name__ == "__main__":
     # --- CONFIGURATION ---
     gt_txt_path = 'woody_plants_output_v2.txt'
     plots_csv = os.path.join('0_Shapefiles_2018', 'filtered_plots_2018.csv')  # diagnostic only
-    metrics_parent = "4_Vegetation_Metrics_v_01"      # rasters written by step 2
-    output_dir = "5_Ground_Truth_Comparison_v_01"
+    metrics_parent = "/directory/to/LiDAR-derived_metrics/"      # rasters written by step 2
+    output_dir = "/directory/to/output"
 
     # True = only redraw heatmaps from the CSVs already in output_dir.
     replot_only = False
