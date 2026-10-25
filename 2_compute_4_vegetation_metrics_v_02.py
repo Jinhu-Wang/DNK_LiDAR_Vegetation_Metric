@@ -20,80 +20,6 @@ except ImportError:
 # Fix for Windows console encoding
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# ==========================================================================
-# v_01 CHANGES (from v4)
-# ==========================================================================
-# ONE SUBSTANTIVE CHANGE: THE GRID. Everything else -- the metrics, the
-# per-pixel grouping, the class configs, the output tree, the NaN-raster
-# convention for plots with no points of a class, the sweep orchestration
-# -- is v4 unchanged.
-#
-# v4 snapped each raster to the ABSOLUTE UTM grid:
-#       min_x = floor(min(x) / veg_res) * veg_res
-#       max_y = ceil (max(y) / veg_res) * veg_res
-#   so pixel edges landed on multiples of veg_res in map coordinates, with
-#   the plot centre falling wherever it happened to fall inside a pixel.
-#   Because ~96% of the surveyed plot centres are exact multiples of 10 m,
-#   that accidentally produced correct centre alignment at 0.1, 0.2, 0.5,
-#   1, 2, 5 and 10 m -- and misalignment at 0.3, 0.4, 0.6, 0.7, 0.8, 0.9,
-#   3, 4, 6, 7, 8 and 9 m, where it shifts which points fall in which
-#   pixel and therefore every metric value.
-#
-# v_01 uses the same centre-symmetric grid as
-# 1_dtm_gen_normalization_parallel_v_02.py:
-#       centre  = bounding-box centre of ALL points in the tile,
-#                 cx = (min_x + max_x)/2,  cy = (min_y + max_y)/2
-#       n_x     = ceil(half_width / veg_res),  n_y likewise, min 1
-#       raster  = 2*n_x by 2*n_y pixels, spanning cx +/- n_x*veg_res
-#   Even cell count per axis, so the plot centre is always exactly the
-#   shared CORNER of four pixels, and the pixel layout is point-symmetric
-#   about it. A 20 x 20 m plot is 2x2 pixels at 10 m, 4x4 at 5 m, 20x20 at
-#   1 m. Where veg_res does not divide the plot, padding is split equally
-#   on both sides instead of piling up on one.
-#
-# THE GRID IS SHARED WITH THE DTM. Step 1 (v_01/v_02) drops no points --
-# points beyond the pixel-centre domain are edge-clamped, not discarded --
-# so a normalized cloud has exactly the point extent of its clipped tile,
-# and the centre computed here is bit-identical to the one step 1 used.
-# The metric raster and the DTM raster of the same plot at the same
-# resolution therefore share an origin.
-#
-# The grid is still derived from the FULL point extent, not the
-# target-class subset, so class_4 / class_5 / class_4_5 rasters for one
-# plot and resolution remain identical in origin and size (v4's reason,
-# unchanged) -- and now they also match across norm_res, which v4's
-# data-dependent snapping did not guarantee.
-#
-# NOT CHANGED, BECAUSE THEY WERE NEVER WRONG HERE: v4's row order
-# (rows = (max_y - y)/veg_res, row 0 = north) already agrees with
-# from_origin(min_x, max_y, ...), so step 2 rasters were never vertically
-# flipped, and v4 already treated grid cells as pixels rather than nodes,
-# so there was no half-pixel offset either. Both of those bugs were
-# specific to the step-1 DTM writer.
-#
-# ADDED: resume support, ported verbatim in spirit from
-# 2_compute_4_vegetation_metrics_v9.py (is_valid_tif / filter_pending_files).
-# It changes no output value; it only lets an interrupted sweep continue.
-# A full 19 x 19 sweep is millions of files -- see the note in the
-# CONFIGURATION block -- and restarting one from zero is not viable. Set
-# resume = False for v4's exact behaviour (recompute everything).
-# ==========================================================================
-
-
-# ==========================================================================
-# v_02 CHANGES (from v_01)
-# ==========================================================================
-# ONE ADDITION: a point-density check. For each plot, average point density
-# (all points / point bounding-box area, in points per square metre) is
-# computed once per normalization-resolution folder. Plots below
-# MIN_POINT_DENSITY (see CONFIGURATION) are excluded from the whole sweep --
-# no vegetation-metric rasters are written for them at any veg_res. This is
-# a per-tile property, so it does not depend on veg_res and is measured
-# once and reused across that folder's veg_res passes.
-#
-# A CSV of every plot's measured density and kept/excluded status is
-# written to <base_output_folder>/plot_density_report.csv.
-# ==========================================================================
 
 
 def res_str(res):
@@ -531,8 +457,8 @@ if __name__ == "__main__":
     # --- CONFIGURATION ---
 
     # Centre-aligned normalized clouds from step 1 v_02.
-    normalized_parent_folder = "3_Normalized_Parallel_idw_v_01"
-    base_output_folder = "4_Vegetation_Metrics_v_02"
+    normalized_parent_folder = "/directory/to/normalized/point/clouds"
+    base_output_folder = "/directory/to/output"
 
     # Drives BOTH the norm_res loop and the veg_res loop, as in v4. The
     # full 19 values now that step 1 produces all of them.
